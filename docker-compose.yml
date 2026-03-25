@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  # Express backend server
+  server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    container_name: zero-trust-server
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - TOTP_SECRET=${TOTP_SECRET}
+      - RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}
+    networks:
+      - zero-trust-network
+    restart: unless-stopped
+
+  # Nginx proxy
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    container_name: zero-trust-proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - zero-trust-network
+    restart: unless-stopped
+
+# Internal network — containers talk to each other here
+# Nobody outside can access the server container directly
+networks:
+  zero-trust-network:
+    driver: bridge
