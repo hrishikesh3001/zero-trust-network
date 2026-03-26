@@ -17,7 +17,7 @@ const USERS = {
   admin: {
     username: "admin",
     passwordHash:
-      "$2b$12$RqVcy5uJatr0n.WWoOT4O.yGUMDVbk82hBmPXrUEurr3ASOPaWUKu",
+      "$2b$12$VYiJ/Tqt8FOyAV.5uJh84unTk6C235jqHki7auBwWJGdISPkZG8oy",
     totpSecret: process.env.TOTP_SECRET,
   },
 };

@@ -14,11 +14,8 @@ app.use(helmet());
 // Only allow requests from your React front-end
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://your-vercel-app.vercel.app"
-        : "http://localhost:5173",
-    credentials: true,
+    origin: "*",
+    credentials: false,
   }),
 );
 
