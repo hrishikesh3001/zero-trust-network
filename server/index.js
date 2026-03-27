@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const vaultRoutes = require("./routes/vault");
+const dashboardRoutes = require("./routes/dashboard");
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/vault", vaultRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

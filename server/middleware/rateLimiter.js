@@ -7,6 +7,8 @@ const loginRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
+    const { recordLockout } = require("../services/stats");
+    recordLockout(req.ip);
     // This runs when limit is exceeded
     res.status(429).json({
       success: false,

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getStats } from "../../../server/services/stats";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -38,6 +39,10 @@ export const authAPI = {
 
 export const vaultAPI = {
   getVaultData: () => api.get("/vault"),
+};
+
+export const dashboardAPI = {
+  getStats: () => api.get("/dashboard"),
 };
 
 export default api;

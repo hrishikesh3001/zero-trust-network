@@ -9,6 +9,7 @@ const {
   checkValidation,
 } = require("../middleware/sanitize");
 const { verifyTOTP } = require("../services/totp");
+const { recordLoginAttempt, recordLogout } = require("../services/stats");
 const { addToBlacklist } = require("../services/tokenBlacklist");
 
 // Hardcoded user for now
@@ -44,6 +45,7 @@ router.post(
       // Step 2 — Verify password
       const passwordValid = await bcrypt.compare(password, user.passwordHash);
       if (!passwordValid) {
+        recordLoginAttempt(false, username, req.ip);
         return res.status(401).json({
           success: false,
           message: "Invalid credentials", // Never say "wrong password"
@@ -85,6 +87,7 @@ router.post(
 
       const totpValid = verifyTOTP(totpToken, user.totpSecret);
       if (!totpValid) {
+        recordLoginAttempt(false, username, req.ip);
         return res.status(401).json({
           success: false,
           message: "Invalid authenticator code",
@@ -102,6 +105,7 @@ router.post(
       console.log(
         `[${new Date().toISOString()}] SUCCESS login: ${username} from ${req.ip}`,
       );
+      recordLoginAttempt(true, username, req.ip);
 
       res.json({
         success: true,
@@ -127,6 +131,9 @@ router.post("/logout", (req, res) => {
     addToBlacklist(token);
     console.log(`[${new Date().toISOString()}] LOGOUT: token blacklisted`);
   }
+
+  const decoded = token ? require("jsonwebtoken").decode(token) : null;
+  recordLoginAttempt(decoded?.username || "unknown");
 
   res.json({ success: true, message: "Logged out successfully" });
 });
