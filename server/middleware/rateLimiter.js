@@ -1,7 +1,7 @@
 const rateLimit = require("express-rate-limit");
 
 const loginRateLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
+  windowMs: 60 * 1000, // 1 minute - matching the lockout timer
   max: 5, // 5 attempts per window
   skipSuccessfulRequests: true, // Only count failed attempts
   standardHeaders: true,

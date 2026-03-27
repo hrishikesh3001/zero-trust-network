@@ -73,6 +73,12 @@ export default function Vault() {
           <div className="v-topbar-right">
             <span className="v-clock">{fmt(time)}</span>
             <button
+              className="v-dash-btn"
+              onClick={() => navigate("/dashboard")}
+            >
+              Dashboard
+            </button>
+            <button
               className={`v-logout-btn${loggingOut ? " leaving" : ""}`}
               onClick={handleLogout}
               disabled={loggingOut}
@@ -243,8 +249,12 @@ function LoadingScreen() {
 function StatCard({ label, value, icon, color }) {
   return (
     <div className="v-stat-card">
-      <span className="v-stat-icon" style={{ color }}>{icon}</span>
-      <span className="v-stat-value" style={{ color }}>{value}</span>
+      <span className="v-stat-icon" style={{ color }}>
+        {icon}
+      </span>
+      <span className="v-stat-value" style={{ color }}>
+        {value}
+      </span>
       <span className="v-stat-label">{label}</span>
     </div>
   );
@@ -278,7 +288,9 @@ function LogEntry({ time, user, action, status }) {
       <span className="v-log-time">{time}</span>
       <span className="v-log-user">{user}</span>
       <span className="v-log-action">{action}</span>
-      <span className="v-log-status" style={{ color: col }}>{status}</span>
+      <span className="v-log-status" style={{ color: col }}>
+        {status}
+      </span>
     </div>
   );
 }
@@ -293,7 +305,9 @@ function Particles() {
     del: `${Math.random() * 6}s`,
   }));
   return (
-    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+    <div
+      style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}
+    >
       {dots.map((d) => (
         <div
           key={d.id}
@@ -357,6 +371,15 @@ const CSS = `
   border-radius: 6px; font-size:12px; letter-spacing:1px;
   cursor: pointer; transition: all 0.2s;
 }
+.v-dash-btn {
+  padding: 7px 18px;
+  background: transparent;
+  border: 1px solid rgba(129,140,248,0.4);
+  color: rgba(129,140,248,0.8);
+  border-radius: 6px; font-size:12px; letter-spacing:1px;
+  cursor: pointer; transition: all 0.2s;
+}
+.v-dash-btn:hover { background:rgba(129,140,248,0.08); border-color:rgba(129,140,248,0.7); color:#818cf8; }
 .v-logout-btn:hover { background:rgba(248,113,113,0.08); border-color:rgba(248,113,113,0.7); color:#f87171; }
 .v-logout-btn.leaving { opacity:0.4; cursor:not-allowed; }
 
