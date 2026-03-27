@@ -18,8 +18,7 @@ const { addToBlacklist } = require("../services/tokenBlacklist");
 const USERS = {
   admin: {
     username: "admin",
-    passwordHash:
-      "$2b$12$VYiJ/Tqt8FOyAV.5uJh84unTk6C235jqHki7auBwWJGdISPkZG8oy",
+    passwordHash: "$2b$12$GCkJbaxgsAfpHjxPmM0b1e2XSpOQPG7/b02j8CIhtBCndMD9MPpS6",
     totpSecret: process.env.TOTP_SECRET,
   },
 };
