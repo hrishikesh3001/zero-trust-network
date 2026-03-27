@@ -15,8 +15,23 @@ app.use(helmet());
 // Only allow requests from your React front-end
 app.use(
   cors({
-    origin: "*",
-    credentials: false,
+    origin: function (origin, callback) {
+      const allowed = [
+        "http://localhost:5173",
+        "http://10.207.70.247:5173",
+        process.env.CLIENT_URL,
+      ].filter(Boolean);
+
+      // Allow requests with no origin (Thunder Client, mobile apps, server-to-server)
+      if (!origin) return callback(null, true);
+
+      if (allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   }),
 );
 
