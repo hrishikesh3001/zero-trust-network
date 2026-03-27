@@ -103,7 +103,7 @@ function QRPanel() {
   const navigate = useNavigate();
 
   const apiBase =
-    //import.meta.env.VITE_API_URL?.replace("/api", "") ||
+    import.meta.env.VITE_API_URL?.replace("/api", "") ||
     "http://localhost:3001";
 
   const fetchQR = async () => {
