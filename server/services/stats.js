@@ -1,5 +1,16 @@
 const serverStartTime = Date.now();
 
+// Tracks which guest tokens have been scanned
+const scannedTokens = new Set();
+
+const markTokenScanned = (tokenId) => {
+  scannedTokens.add(tokenId);
+};
+
+const isTokenScanned = (tokenId) => {
+  return scannedTokens.has(tokenId);
+};
+
 const stats = {
   totalLoginAttempts: 0,
   successfulLogins: 0,
@@ -57,4 +68,6 @@ module.exports = {
   recordLogout,
   recordLockout,
   getStats,
+  markTokenScanned,
+  isTokenScanned,
 };

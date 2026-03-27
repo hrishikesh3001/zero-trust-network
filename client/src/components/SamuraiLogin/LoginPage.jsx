@@ -95,6 +95,161 @@ const STARS = [
   { top: 22, left: 65, size: 1.5, delay: 0.9 },
 ];
 
+function QRPanel() {
+  const [qrData, setQrData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(900);
+  const [scanned, setScanned] = useState(false);
+  const navigate = useNavigate();
+
+  const apiBase =
+    //import.meta.env.VITE_API_URL?.replace("/api", "") ||
+    "http://localhost:3001";
+
+  const fetchQR = async () => {
+    setLoading(true);
+    setScanned(false);
+    try {
+      // THIS was the bug — it was calling check-scan instead of guest-token
+      const res = await fetch(`${apiBase}/api/auth/guest-token`);
+      const data = await res.json();
+      if (data.success) {
+        setQrData(data);
+        setTimeLeft(900);
+      }
+    } catch {
+      // server not reachable
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch QR on mount
+  useEffect(() => {
+    fetchQR();
+  }, []);
+
+  // Auto refresh every 15 minutes
+  useEffect(() => {
+    const interval = setInterval(fetchQR, 900000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown timer — auto refresh when hits zero
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      fetchQR();
+      return;
+    }
+    const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timeLeft]);
+
+  // Poll server every 3 seconds to check if phone scanned
+  useEffect(() => {
+    if (!qrData?.tokenId || scanned) return;
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/api/auth/check-scan/${qrData.tokenId}`,
+        );
+        const data = await res.json();
+        if (data.scanned) {
+          clearInterval(poll);
+          setScanned(true);
+          console.log("SCANNED DETECTED - navigating to dashboard");
+          window.location.href =
+            "/dashboard?guestSession=true&expires=" + (Date.now() + 300000);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [qrData, scanned, navigate]);
+
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="qr-panel">
+      <p
+        style={{
+          color: "#fbbf24",
+          fontSize: "10px",
+          letterSpacing: "3px",
+          textTransform: "uppercase",
+          fontFamily: "sans-serif",
+        }}
+      >
+        Temporary Access
+      </p>
+      <p
+        style={{
+          color: "rgba(224,231,255,0.4)",
+          fontSize: "11px",
+          textAlign: "center",
+          fontFamily: "sans-serif",
+          lineHeight: 1.5,
+        }}
+      >
+        Scan with your phone for 15-minute guest access
+      </p>
+
+      {loading ? (
+        <div style={{ padding: "40px 0" }}>
+          <div className="qr-spinner" />
+        </div>
+      ) : scanned ? (
+        <div style={{ padding: "20px 0", textAlign: "center" }}>
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>✓</div>
+          <p
+            style={{
+              color: "#4ade80",
+              fontSize: "12px",
+              fontFamily: "sans-serif",
+            }}
+          >
+            Scanned — redirecting...
+          </p>
+        </div>
+      ) : qrData ? (
+        <img
+          src={qrData.qrCode}
+          alt="Guest access QR code"
+          width={180}
+          height={180}
+          className="qr-image"
+          style={{ borderRadius: "8px" }}
+        />
+      ) : (
+        <p
+          style={{
+            color: "#f87171",
+            fontSize: "12px",
+            fontFamily: "sans-serif",
+          }}
+        >
+          Server offline — QR unavailable
+        </p>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: timeLeft < 60 ? "#f87171" : "rgba(224,231,255,0.4)",
+          fontSize: "12px",
+          fontFamily: "monospace",
+        }}
+      >
+        <span>⏱</span>
+        <span>Expires in {fmt(timeLeft)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main LoginPage component ───────────────────────────────────────────────
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -277,6 +432,34 @@ export default function LoginPage() {
         }
         .attempt-dot.used { background: #ef4444; }
 
+        .qr-panel {
+          width: 100%;
+          max-width: 320px;
+          background: rgba(10, 14, 39, 0.82);
+          backdrop-filter: blur(14px);
+          border: 1px solid rgba(251,191,36,0.25);
+          border-radius: 20px;
+          padding: 28px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          box-shadow: 0 8px 48px rgba(0,0,0,0.55);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .qr-spinner {
+          width: 32px; height: 32px;
+          border: 2px solid rgba(251,191,36,0.2);
+          border-top-color: #fbbf24;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes qrPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.3); }
+          50% { box-shadow: 0 0 0 8px rgba(251,191,36,0); }
+        }
+        .qr-image { animation: qrPulse 2s ease-in-out infinite; border-radius: 8px; }
+
         .ground-layer {
           position: fixed;
           bottom: 0;
@@ -420,7 +603,11 @@ export default function LoginPage() {
       </div>
 
       {/* ── Login Form — always centred over the scene ──────────────────────── */}
-      <div className="form-wrapper">
+      <div
+        className="form-wrapper"
+        style={{ flexDirection: "row", gap: "24px", flexWrap: "wrap" }}
+      >
+        <QRPanel />
         <div className={`form-card ${shake ? "shake" : ""}`}>
           {/* Title */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>

@@ -1,5 +1,4 @@
 import axios from "axios";
-import { getStats } from "../../../server/services/stats";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -35,6 +34,10 @@ export const authAPI = {
     api.post("/auth/login", { username, password, totpToken, recaptchaToken }),
 
   logout: () => api.post("/auth/logout"),
+
+  getGuestToken: () => api.get("/auth/guest-token"),
+
+  checkScan: (tokenId) => api.get(`/auth/check-scan/${tokenId}`),
 };
 
 export const vaultAPI = {

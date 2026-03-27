@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Vault from "./pages/Vault";
 import Dashboard from "./pages/Dashboard";
+import GuestVault from "./pages/GuestVault";
 
 // Protected route — redirects to login if no token
 const ProtectedRoute = ({ children }) => {
@@ -32,6 +33,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/guest-vault" element={<GuestVault />} />
     </Routes>
   );
 }

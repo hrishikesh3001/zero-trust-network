@@ -1,13 +1,11 @@
 const jwt = require("jsonwebtoken");
 const { isBlacklisted } = require("../services/tokenBlacklist");
 
-const verifyToken = (req, res, next) => {
-  // Extract token from Authorization header
-  // Header format: "Bearer eyJhbGc..."
+// scope: 'full' = admin, 'vault-only' = guest
+const verifyToken = (req, res, next, requiredScope = "full") => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  // Case 1 — No token at all
   if (!token) {
     return res.status(401).json({
       success: false,
@@ -16,7 +14,6 @@ const verifyToken = (req, res, next) => {
     });
   }
 
-  // Case 2 — Token was logged out (blacklisted)
   if (isBlacklisted(token)) {
     return res.status(401).json({
       success: false,
@@ -25,11 +22,20 @@ const verifyToken = (req, res, next) => {
     });
   }
 
-  // Case 3 — Verify the token is valid and not expired
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user info to request
-    next(); // Token is valid — continue to protected route
+
+    // If this route requires full scope, reject guest tokens
+    if (requiredScope === "full" && decoded.scope === "vault-only") {
+      return res.status(403).json({
+        success: false,
+        message: "Guest tokens cannot access this resource.",
+        code: "INSUFFICIENT_SCOPE",
+      });
+    }
+
+    req.user = decoded;
+    next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
@@ -46,4 +52,11 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = verifyToken;
+// Full access middleware — blocks guest tokens
+const verifyFullToken = (req, res, next) => verifyToken(req, res, next, "full");
+
+// Guest-ok middleware — accepts both full and guest tokens
+const verifyAnyToken = (req, res, next) => verifyToken(req, res, next, "any");
+
+module.exports = verifyFullToken;
+module.exports.verifyAnyToken = verifyAnyToken;
