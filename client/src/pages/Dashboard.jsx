@@ -19,20 +19,19 @@ export default function Dashboard() {
   );
   const pollRef = useRef(null);
 
-  // Live clock
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Fetch stats on mount then every 5 seconds
   useEffect(() => {
     fetchStats();
-    pollRef.current = setInterval(fetchStats, 5000);
+    if (!isGuestSession) {
+      pollRef.current = setInterval(fetchStats, 5000);
+    }
     return () => clearInterval(pollRef.current);
   }, []);
 
-  // Uptime counter
   useEffect(() => {
     if (!stats) return;
     const base = stats.serverStartTime;
@@ -42,7 +41,6 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [stats?.serverStartTime]);
 
-  // Guest session countdown
   useEffect(() => {
     if (!isGuestSession) return;
     if (guestTimeLeft <= 0) {
@@ -55,6 +53,10 @@ export default function Dashboard() {
   }, [isGuestSession, guestTimeLeft, navigate]);
 
   const fetchStats = async () => {
+    if (isGuestSession) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await dashboardAPI.getStats();
       setStats(res.data.stats);
@@ -63,7 +65,6 @@ export default function Dashboard() {
       if (err.response?.status === 401) {
         navigate("/");
       } else if (err.response?.status === 403) {
-        // Guest token tried to access dashboard
         navigate("/");
       } else {
         setError("Failed to load stats");
@@ -73,7 +74,8 @@ export default function Dashboard() {
     }
   };
 
-  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const fmt = (s) =>
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const fmtUptime = (s) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -101,7 +103,7 @@ export default function Dashboard() {
     return type;
   };
 
-  if (loading)
+  if (loading && !isGuestSession)
     return (
       <>
         <style>{CSS}</style>
@@ -122,7 +124,6 @@ export default function Dashboard() {
     <>
       <style>{CSS}</style>
 
-      {/* Session expired popup */}
       {showExpired && (
         <div className="d-expired-overlay">
           <div className="d-expired-box">
@@ -174,146 +175,210 @@ export default function Dashboard() {
         <div className="d-content">
           {error && <div className="d-error">{error}</div>}
 
-          {/* Page title */}
-          <div className="d-hero">
-            <h1 className="d-hero-title">Security Dashboard</h1>
-            <p className="d-hero-sub">
-              Live monitoring — refreshes every 5 seconds
-            </p>
-          </div>
-
-          {/* Stats cards */}
-          <div className="d-stats-grid">
-            <StatCard
-              label="Total Attempts"
-              value={total}
-              color="#38bdf8"
-              icon="◎"
-            />
-            <StatCard
-              label="Successful Logins"
-              value={success}
-              color="#4ade80"
-              icon="◉"
-            />
-            <StatCard
-              label="Failed Logins"
-              value={failed}
-              color="#f87171"
-              icon="✕"
-            />
-            <StatCard
-              label="Total Logouts"
-              value={stats?.activeLogouts || 0}
-              color="#818cf8"
-              icon="↩"
-            />
-            <StatCard
-              label="Locked IPs"
-              value={stats?.currentlyLockedIPs || 0}
-              color="#ef4444"
-              icon="⛔"
-            />
-            <StatCard
-              label="Server Uptime"
-              value={fmtUptime(uptime)}
-              color="#fbbf24"
-              icon="◷"
-              small
-            />
-          </div>
-
-          {/* Success vs failure bar */}
-          <div className="d-section-title">LOGIN RATIO</div>
-          <div className="d-ratio-card">
-            <div className="d-ratio-labels">
-              <span style={{ color: "#4ade80" }}>✓ Success {successPct}%</span>
-              <span
-                style={{ color: "rgba(224,231,255,0.4)", fontSize: "11px" }}
+          {/* Guest session view */}
+          {isGuestSession && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "calc(100vh - 120px)",
+                gap: "16px",
+                fontFamily: "'Segoe UI', sans-serif",
+              }}
+            >
+              <div style={{ fontSize: "48px" }}>✓</div>
+              <h1
+                style={{
+                  fontSize: "clamp(24px, 4vw, 40px)",
+                  fontWeight: 800,
+                  letterSpacing: "3px",
+                  background: "linear-gradient(135deg, #4ade80, #22d3ee)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
               >
-                {total} total attempts
-              </span>
-              <span style={{ color: "#f87171" }}>✕ Failed {failPct}%</span>
+                Temporary Access Active
+              </h1>
+              <p
+                style={{
+                  color: "rgba(224,231,255,0.5)",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              >
+                Your session will expire automatically. Dashboard data is
+                restricted to administrators.
+              </p>
+              <p
+                style={{
+                  color: guestTimeLeft < 60 ? "#f87171" : "#fbbf24",
+                  fontSize: "24px",
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                }}
+              >
+                {fmt(guestTimeLeft)}
+              </p>
             </div>
-            <div className="d-ratio-bar">
-              <div
-                className="d-ratio-success"
-                style={{ width: `${successPct}%` }}
-              />
-              <div className="d-ratio-fail" style={{ width: `${failPct}%` }} />
-            </div>
-          </div>
+          )}
 
-          {/* Service health */}
-          <div className="d-section-title" style={{ marginTop: "32px" }}>
-            SERVICE HEALTH
-          </div>
-          <div className="d-services-grid">
-            {Object.entries(stats?.services || {}).map(([name, svc]) => (
-              <div key={name} className="d-service-card">
-                <div
-                  className="d-service-dot"
-                  style={{
-                    background: svc.status === "ONLINE" ? "#4ade80" : "#f87171",
-                    boxShadow:
-                      svc.status === "ONLINE"
-                        ? "0 0 8px #4ade80"
-                        : "0 0 8px #f87171",
-                  }}
-                />
-                <div>
-                  <p className="d-service-name">{name.toUpperCase()}</p>
-                  <p className="d-service-latency">{svc.latency}</p>
-                </div>
-                <span
-                  className="d-service-status"
-                  style={{
-                    color: svc.status === "ONLINE" ? "#4ade80" : "#f87171",
-                    borderColor:
-                      svc.status === "ONLINE"
-                        ? "rgba(74,222,128,0.3)"
-                        : "rgba(248,113,113,0.3)",
-                  }}
-                >
-                  {svc.status}
-                </span>
+          {/* Full dashboard — admin only */}
+          {!isGuestSession && (
+            <>
+              <div className="d-hero">
+                <h1 className="d-hero-title">Security Dashboard</h1>
+                <p className="d-hero-sub">
+                  Live monitoring — refreshes every 5 seconds
+                </p>
               </div>
-            ))}
-          </div>
 
-          {/* Security event log */}
-          <div className="d-section-title" style={{ marginTop: "32px" }}>
-            LIVE SECURITY EVENTS
-            <span className="d-live-badge">● LIVE</span>
-          </div>
-          <div className="d-log">
-            {!stats?.recentEvents || stats.recentEvents.length === 0 ? (
-              <div className="d-log-empty">No security events recorded yet</div>
-            ) : (
-              stats.recentEvents.map((ev, i) => (
-                <div key={i} className="d-log-row">
-                  <span className="d-log-time">{fmtTs(ev.timestamp)}</span>
-                  <span
-                    className="d-log-type"
-                    style={{ color: eventColor(ev.type) }}
-                  >
-                    {eventLabel(ev.type)}
+              <div className="d-stats-grid">
+                <StatCard
+                  label="Total Attempts"
+                  value={total}
+                  color="#38bdf8"
+                  icon="◎"
+                />
+                <StatCard
+                  label="Successful Logins"
+                  value={success}
+                  color="#4ade80"
+                  icon="◉"
+                />
+                <StatCard
+                  label="Failed Logins"
+                  value={failed}
+                  color="#f87171"
+                  icon="✕"
+                />
+                <StatCard
+                  label="Total Logouts"
+                  value={stats?.activeLogouts || 0}
+                  color="#818cf8"
+                  icon="↩"
+                />
+                <StatCard
+                  label="Locked IPs"
+                  value={stats?.currentlyLockedIPs || 0}
+                  color="#ef4444"
+                  icon="⛔"
+                />
+                <StatCard
+                  label="Server Uptime"
+                  value={fmtUptime(uptime)}
+                  color="#fbbf24"
+                  icon="◷"
+                  small
+                />
+              </div>
+
+              <div className="d-section-title">LOGIN RATIO</div>
+              <div className="d-ratio-card">
+                <div className="d-ratio-labels">
+                  <span style={{ color: "#4ade80" }}>
+                    ✓ Success {successPct}%
                   </span>
-                  <span className="d-log-detail">
-                    {ev.details?.username && `user: ${ev.details.username}`}
-                    {ev.details?.ip && ` · ip: ${ev.details.ip}`}
+                  <span
+                    style={{
+                      color: "rgba(224,231,255,0.4)",
+                      fontSize: "11px",
+                    }}
+                  >
+                    {total} total attempts
+                  </span>
+                  <span style={{ color: "#f87171" }}>
+                    ✕ Failed {failPct}%
                   </span>
                 </div>
-              ))
-            )}
-          </div>
+                <div className="d-ratio-bar">
+                  <div
+                    className="d-ratio-success"
+                    style={{ width: `${successPct}%` }}
+                  />
+                  <div
+                    className="d-ratio-fail"
+                    style={{ width: `${failPct}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="d-section-title" style={{ marginTop: "32px" }}>
+                SERVICE HEALTH
+              </div>
+              <div className="d-services-grid">
+                {Object.entries(stats?.services || {}).map(([name, svc]) => (
+                  <div key={name} className="d-service-card">
+                    <div
+                      className="d-service-dot"
+                      style={{
+                        background:
+                          svc.status === "ONLINE" ? "#4ade80" : "#f87171",
+                        boxShadow:
+                          svc.status === "ONLINE"
+                            ? "0 0 8px #4ade80"
+                            : "0 0 8px #f87171",
+                      }}
+                    />
+                    <div>
+                      <p className="d-service-name">{name.toUpperCase()}</p>
+                      <p className="d-service-latency">{svc.latency}</p>
+                    </div>
+                    <span
+                      className="d-service-status"
+                      style={{
+                        color:
+                          svc.status === "ONLINE" ? "#4ade80" : "#f87171",
+                        borderColor:
+                          svc.status === "ONLINE"
+                            ? "rgba(74,222,128,0.3)"
+                            : "rgba(248,113,113,0.3)",
+                      }}
+                    >
+                      {svc.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="d-section-title" style={{ marginTop: "32px" }}>
+                LIVE SECURITY EVENTS
+                <span className="d-live-badge">● LIVE</span>
+              </div>
+              <div className="d-log">
+                {!stats?.recentEvents || stats.recentEvents.length === 0 ? (
+                  <div className="d-log-empty">
+                    No security events recorded yet
+                  </div>
+                ) : (
+                  stats.recentEvents.map((ev, i) => (
+                    <div key={i} className="d-log-row">
+                      <span className="d-log-time">{fmtTs(ev.timestamp)}</span>
+                      <span
+                        className="d-log-type"
+                        style={{ color: eventColor(ev.type) }}
+                      >
+                        {eventLabel(ev.type)}
+                      </span>
+                      <span className="d-log-detail">
+                        {ev.details?.username &&
+                          `user: ${ev.details.username}`}
+                        {ev.details?.ip && ` · ip: ${ev.details.ip}`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>
   );
 }
 
-// ── Sub-component ─────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, icon, small }) {
   return (
     <div className="d-stat-card">
@@ -331,7 +396,6 @@ function StatCard({ label, value, color, icon, small }) {
   );
 }
 
-// ── CSS ───────────────────────────────────────────────────────────────────────
 const CSS = `
 @keyframes dfadein { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
 @keyframes dspin   { to{transform:rotate(360deg);} }
