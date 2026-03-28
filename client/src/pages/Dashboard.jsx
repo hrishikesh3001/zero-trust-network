@@ -156,9 +156,14 @@ export default function Dashboard() {
                 ⚠ Guest: {fmt(guestTimeLeft)}
               </span>
             )}
-            <button className="d-vault-btn" onClick={() => navigate("/vault")}>
-              ← Vault
-            </button>
+            {!isGuestSession && (
+              <button
+                className="d-vault-btn"
+                onClick={() => navigate("/vault")}
+              >
+                ← Vault
+              </button>
+            )}
             <button className="d-exit-btn" onClick={() => navigate("/")}>
               Logout
             </button>
