@@ -209,7 +209,7 @@ router.get("/guest-token", async (req, res) => {
 
     // The URL the phone will open after scanning
     // In production replace localhost:5173 with your real domain
-    const guestURL = `${process.env.CLIENT_URL || "http://localhost:5173"}/guest-vault?token=${token}`;
+    const guestURL = `${process.env.CLIENT_URL || "http://localhost:5173"}/guest-vault?tokenId=${tokenId}`;
 
     // Generate QR code as base64 image
     const qrDataURL = await QRCode.toDataURL(guestURL, {
