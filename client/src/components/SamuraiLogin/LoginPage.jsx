@@ -182,7 +182,7 @@ function QRPanel() {
           fontFamily: "sans-serif",
         }}
       >
-        Temporary Access
+        SCAN HERE
       </p>
       <p
         style={{
@@ -193,7 +193,7 @@ function QRPanel() {
           lineHeight: 1.5,
         }}
       >
-        Scan with your phone for 15-minute guest access
+        Scan with your phone for Alternate Login
       </p>
 
       {loading ? (
