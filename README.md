@@ -12,10 +12,6 @@ A full-stack Zero Trust Network simulation built with React, Node.js, Docker, an
 
 ![Login Page](screenshots/login.png)
 
-### Login Page — Mobile
-
-![Login Mobile](screenshots/login-mobile.png)
-
 ### Secret Vault
 
 ![Vault](screenshots/vault.png)
