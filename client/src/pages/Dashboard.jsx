@@ -25,12 +25,14 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
-    if (!isGuestSession) {
-      pollRef.current = setInterval(fetchStats, 5000);
+    if (isGuestSession) {
+      setLoading(false);
+      return;
     }
+    fetchStats();
+    pollRef.current = setInterval(fetchStats, 5000);
     return () => clearInterval(pollRef.current);
-  }, []);
+  }, [isGuestSession]);
 
   useEffect(() => {
     if (!stats) return;
@@ -74,8 +76,7 @@ export default function Dashboard() {
     }
   };
 
-  const fmt = (s) =>
-    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const fmtUptime = (s) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -289,9 +290,7 @@ export default function Dashboard() {
                   >
                     {total} total attempts
                   </span>
-                  <span style={{ color: "#f87171" }}>
-                    ✕ Failed {failPct}%
-                  </span>
+                  <span style={{ color: "#f87171" }}>✕ Failed {failPct}%</span>
                 </div>
                 <div className="d-ratio-bar">
                   <div
@@ -329,8 +328,7 @@ export default function Dashboard() {
                     <span
                       className="d-service-status"
                       style={{
-                        color:
-                          svc.status === "ONLINE" ? "#4ade80" : "#f87171",
+                        color: svc.status === "ONLINE" ? "#4ade80" : "#f87171",
                         borderColor:
                           svc.status === "ONLINE"
                             ? "rgba(74,222,128,0.3)"
@@ -363,8 +361,7 @@ export default function Dashboard() {
                         {eventLabel(ev.type)}
                       </span>
                       <span className="d-log-detail">
-                        {ev.details?.username &&
-                          `user: ${ev.details.username}`}
+                        {ev.details?.username && `user: ${ev.details.username}`}
                         {ev.details?.ip && ` · ip: ${ev.details.ip}`}
                       </span>
                     </div>
