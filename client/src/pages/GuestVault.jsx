@@ -1,82 +1,72 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { authAPI } from "../services/api";
 
 export default function GuestVault() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  const [phase, setPhase] = useState("loading"); // 'loading' | 'granted' | 'expired'
+  const tokenId = searchParams.get("tokenId");
 
-  useEffect(() => {
-    if (!token) {
-      setPhase("expired");
+  const [employeeId, setEmployeeId] = useState("");
+  const [totpToken, setTotpToken] = useState("");
+  const [phase, setPhase] = useState("form"); // 'form' | 'granted' | 'expired'
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleVerify = async () => {
+    if (!employeeId || !totpToken) {
+      setError("Please fill in all fields");
       return;
     }
-    verifyToken();
-  }, [token]);
+    if (!tokenId) {
+      setError("Invalid QR code — please scan again");
+      return;
+    }
 
-  const verifyToken = async () => {
+    setLoading(true);
+    setError("");
+
     try {
-      const apiBase =
-        import.meta.env.VITE_API_URL?.replace("/api", "") ||
-        "http://localhost:3001";
-      const res = await fetch(`${apiBase}/api/vault/guest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await authAPI.phoneVerify(employeeId, totpToken, tokenId);
+      if (res.data.success) {
         setPhase("granted");
+      } else {
+        setError("Invalid credentials");
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError(err.response.data.message || "Invalid credentials");
       } else {
         setPhase("expired");
       }
-    } catch {
-      setPhase("expired");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); } 50% { box-shadow: 0 0 0 20px rgba(74,222,128,0); } }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.4);} 50%{box-shadow:0 0 0 20px rgba(74,222,128,0);} }
+        @keyframes spin { to{transform:rotate(360deg);} }
+        input:focus { outline:none; border-color:#6366f1 !important; }
       `}</style>
+
       <div
         style={{
           minHeight: "100vh",
           background: "#050818",
+          backgroundImage:
+            "radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.06) 0%, transparent 60%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: "24px",
           fontFamily: "'Segoe UI', sans-serif",
           padding: "24px",
         }}
       >
-        {phase === "loading" && (
-          <>
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                border: "3px solid rgba(99,102,241,0.2)",
-                borderTopColor: "#818cf8",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-              }}
-            />
-            <p
-              style={{
-                color: "rgba(224,231,255,0.5)",
-                fontSize: "13px",
-                letterSpacing: "2px",
-              }}
-            >
-              VERIFYING TEMPORARY CREDENTIALS...
-            </p>
-          </>
-        )}
-
+        {/* Access Granted screen */}
         {phase === "granted" && (
           <div
             style={{ textAlign: "center", animation: "fadeIn 0.6s ease-out" }}
@@ -118,7 +108,7 @@ export default function GuestVault() {
                 letterSpacing: "1px",
               }}
             >
-              Identity verified successfully
+              Identity verified — PC is loading vault
             </p>
             <p
               style={{
@@ -132,6 +122,7 @@ export default function GuestVault() {
           </div>
         )}
 
+        {/* Expired screen */}
         {phase === "expired" && (
           <div
             style={{ textAlign: "center", animation: "fadeIn 0.6s ease-out" }}
@@ -141,7 +132,6 @@ export default function GuestVault() {
               style={{
                 fontSize: "28px",
                 fontWeight: 800,
-                letterSpacing: "3px",
                 color: "#f87171",
                 marginBottom: "12px",
               }}
@@ -149,7 +139,7 @@ export default function GuestVault() {
               Access Expired
             </h1>
             <p style={{ color: "rgba(224,231,255,0.4)", fontSize: "13px" }}>
-              This temporary access link is no longer valid.
+              This QR code is no longer valid.
             </p>
             <p
               style={{
@@ -159,6 +149,169 @@ export default function GuestVault() {
               }}
             >
               Please request a new QR code from the administrator.
+            </p>
+          </div>
+        )}
+
+        {/* Login form */}
+        {phase === "form" && (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              background: "rgba(10,14,39,0.85)",
+              backdropFilter: "blur(14px)",
+              border: "1px solid rgba(99,102,241,0.35)",
+              borderRadius: "20px",
+              padding: "36px 28px",
+              boxShadow: "0 8px 48px rgba(0,0,0,0.55)",
+              animation: "fadeIn 0.5s ease-out",
+            }}
+          >
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: "28px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "12px" }}>🔐</div>
+              <h1
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 700,
+                  letterSpacing: "3px",
+                  color: "#e0e7ff",
+                  textTransform: "uppercase",
+                }}
+              >
+                Zero Trust
+              </h1>
+              <p
+                style={{
+                  fontSize: "10px",
+                  letterSpacing: "2px",
+                  color: "#6366f1",
+                  textTransform: "uppercase",
+                  marginTop: "6px",
+                }}
+              >
+                Mobile Verification
+              </p>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p
+                style={{
+                  color: "#f87171",
+                  fontSize: "12px",
+                  textAlign: "center",
+                  marginBottom: "16px",
+                }}
+              >
+                {error}
+              </p>
+            )}
+
+            {/* Employee ID */}
+            <div style={{ marginBottom: "14px" }}>
+              <label
+                style={{
+                  color: "rgba(224,231,255,0.4)",
+                  fontSize: "10px",
+                  letterSpacing: "2px",
+                  display: "block",
+                  marginBottom: "6px",
+                }}
+              >
+                EMPLOYEE ID
+              </label>
+              <input
+                type="text"
+                placeholder="EMP-XXXX-XXXX"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(99,102,241,0.3)",
+                  borderRadius: "10px",
+                  color: "#e0e7ff",
+                  fontSize: "15px",
+                  fontFamily: "monospace",
+                  letterSpacing: "2px",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {/* TOTP */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  color: "rgba(224,231,255,0.4)",
+                  fontSize: "10px",
+                  letterSpacing: "2px",
+                  display: "block",
+                  marginBottom: "6px",
+                }}
+              >
+                AUTHENTICATOR CODE
+              </label>
+              <input
+                type="text"
+                placeholder="000000"
+                value={totpToken}
+                onChange={(e) =>
+                  setTotpToken(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                maxLength={6}
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  background: "rgba(99,102,241,0.08)",
+                  border: "1px solid rgba(99,102,241,0.4)",
+                  borderRadius: "10px",
+                  color: "#e0e7ff",
+                  fontSize: "24px",
+                  fontFamily: "monospace",
+                  letterSpacing: "8px",
+                  textAlign: "center",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {/* Submit */}
+            <button
+              onClick={handleVerify}
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                border: "1px solid rgba(99,102,241,0.6)",
+                borderRadius: "10px",
+                color: "#e0e7ff",
+                fontSize: "13px",
+                fontWeight: 700,
+                letterSpacing: "2px",
+                textTransform: "uppercase",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Verifying..." : "Verify Identity"}
+            </button>
+
+            <p
+              style={{
+                color: "rgba(224,231,255,0.2)",
+                fontSize: "10px",
+                textAlign: "center",
+                marginTop: "16px",
+                letterSpacing: "1px",
+              }}
+            >
+              Open Google Authenticator for your 6-digit code
             </p>
           </div>
         )}

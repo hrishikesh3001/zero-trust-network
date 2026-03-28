@@ -1,14 +1,24 @@
 const serverStartTime = Date.now();
 
 // Tracks which guest tokens have been scanned
-const scannedTokens = new Set();
+const scannedTokens = new Map(); // tokenId -> full JWT
 
 const markTokenScanned = (tokenId) => {
-  scannedTokens.add(tokenId);
+  if (!scannedTokens.has(tokenId)) {
+    scannedTokens.set(tokenId, null);
+  }
+};
+
+const storeQRToken = (tokenId, jwt) => {
+  scannedTokens.set(tokenId, jwt);
 };
 
 const isTokenScanned = (tokenId) => {
   return scannedTokens.has(tokenId);
+};
+
+const getQRToken = (tokenId) => {
+  return scannedTokens.get(tokenId);
 };
 
 const stats = {
@@ -69,5 +79,7 @@ module.exports = {
   recordLockout,
   getStats,
   markTokenScanned,
+  storeQRToken,
   isTokenScanned,
+  getQRToken,
 };

@@ -38,6 +38,9 @@ export const authAPI = {
   getGuestToken: () => api.get("/auth/guest-token"),
 
   checkScan: (tokenId) => api.get(`/auth/check-scan/${tokenId}`),
+
+  phoneVerify: (employeeId, totpToken, tokenId) =>
+    api.post("/auth/phone-verify", { employeeId, totpToken, tokenId }),
 };
 
 export const vaultAPI = {

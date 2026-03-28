@@ -154,12 +154,13 @@ function QRPanel() {
           `${apiBase}/api/auth/check-scan/${qrData.tokenId}`,
         );
         const data = await res.json();
-        if (data.scanned) {
-          clearInterval(poll);
-          setScanned(true);
-          console.log("SCANNED DETECTED - navigating to dashboard");
-          window.location.href =
-            "/dashboard?guestSession=true&expires=" + (Date.now() + 300000);
+        {
+          if (data.scanned && data.token) {
+            clearInterval(poll);
+            setScanned(true);
+            localStorage.setItem("token", data.token);
+            window.location.href = "/vault";
+          }
         }
       } catch {
         // ignore polling errors

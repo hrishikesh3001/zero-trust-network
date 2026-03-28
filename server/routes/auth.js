@@ -18,8 +18,10 @@ const { addToBlacklist } = require("../services/tokenBlacklist");
 const USERS = {
   admin: {
     username: "admin",
-    passwordHash: "$2b$12$GCkJbaxgsAfpHjxPmM0b1e2XSpOQPG7/b02j8CIhtBCndMD9MPpS6",
+    passwordHash:
+      "$2b$12$GCkJbaxgsAfpHjxPmM0b1e2XSpOQPG7/b02j8CIhtBCndMD9MPpS6",
     totpSecret: process.env.TOTP_SECRET,
+    employeeId: process.env.EMPLOYEE_ID || "EMP-2026-ADMIN",
   },
 };
 
@@ -138,6 +140,55 @@ router.post("/logout", (req, res) => {
   res.json({ success: true, message: "Logged out successfully" });
 });
 
+// POST /api/auth/phone-verify
+// Phone submits employee ID + TOTP — if valid, marks token as authenticated
+// and issues a full JWT for the PC to pick up
+router.post("/phone-verify", async (req, res) => {
+  const { employeeId, totpToken, tokenId } = req.body;
+
+  try {
+    // Find user by employee ID
+    const user = Object.values(USERS).find((u) => u.employeeId === employeeId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Employee ID",
+      });
+    }
+
+    // Verify TOTP
+    const totpValid = verifyTOTP(totpToken, user.totpSecret);
+    if (!totpValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authenticator code",
+      });
+    }
+
+    // Issue a full JWT
+    const token = jwt.sign(
+      { username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" },
+    );
+
+    // Mark the QR token as scanned and store the full JWT
+    const { markTokenScanned, storeQRToken } = require("../services/stats");
+    markTokenScanned(tokenId);
+    storeQRToken(tokenId, token);
+
+    recordLoginAttempt(true, user.username, req.ip);
+
+    res.json({
+      success: true,
+      message: "Access granted",
+    });
+  } catch (error) {
+    console.error("Phone verify error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // GET /api/auth/guest-token
 // Generates a 15-min vault-only JWT and returns it as a QR code image
 router.get("/guest-token", async (req, res) => {
@@ -189,9 +240,10 @@ router.get("/guest-token", async (req, res) => {
 // GET /api/auth/check-scan/:tokenId
 // PC polls this every 3 seconds to check if phone scanned the QR
 router.get("/check-scan/:tokenId", (req, res) => {
-  const { isTokenScanned } = require("../services/stats");
+  const { isTokenScanned, getQRToken } = require("../services/stats");
   const scanned = isTokenScanned(req.params.tokenId);
-  res.json({ scanned });
+  const token = scanned ? getQRToken(req.params.tokenId) : null;
+  res.json({ scanned, token });
 });
 
 module.exports = router;
